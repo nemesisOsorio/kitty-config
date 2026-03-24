@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# ksession — open a kitty session from a fuzzy-picked folder
+#
+# Dependencies: kitty, fzf, fd, nvim
+
+set -euo pipefail
+
+
+# ---------------------------------------------------------------------------
+# 1. Pick a directory with fzf
+# ---------------------------------------------------------------------------
+if command -v fd &>/dev/null; then
+  SELECTED=$(
+    fd . \
+      ~/.config \
+      ~/nemesis/source \
+      --max-depth 2 \
+      --type d \
+      --hidden \
+      --exclude .git \
+      --exclude node_modules \
+      --exclude __pycache__ \
+      2>/dev/null \
+    | fzf \
+        --prompt="  Session folder: " \
+        --preview="ls -la {}" \
+        --preview-window=right:40%:wrap \
+        --height=60% \
+        --border=rounded \
+        --info=inline
+  )
+else
+  echo "fd is not installed."
+  exit 0
+fi
+
+# Exit cleanly if the user cancels fzf
+[[ -z "$SELECTED" ]] && { echo "No folder selected. Bye!"; exit 0; }
+
+# Derive a short, readable session name from the folder
+SESSION_NAME=$(basename "$SELECTED")
+
+# ---------------------------------------------------------------------------
+# 2. Launch (or reuse) a kitty window with two windows
+# ---------------------------------------------------------------------------
+# We use `kitty @ launch` via the kitty remote control socket so this works
+# even when called from inside an existing kitty window.
+#
+launch_via_remote() {
+
+  # Tab 1 — shell in the selected folder
+  kitty @ launch \
+    --type=tab \
+    --tab-title="$SESSION_NAME" \
+    --cwd="$SELECTED" \
+    --hold \
+    -- fish --login
+
+  # Window 2 — nvim in the same folder
+  kitty @ launch \
+    --type=window \
+    --cwd="$SELECTED" \
+    -- nvim .
+
+  kitty @ goto-layout --match title:"$SESSION_NAME" stack
+}
+
+if kitty @ ls &>/dev/null 2>&1; then
+  launch_via_remote
+else
+  echo "Enable remote control in kitty."
+  exit 0
+fi
