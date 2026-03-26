@@ -53,14 +53,14 @@ launch_via_remote() {
     --type=tab \
     --tab-title="$SESSION_NAME" \
     --cwd="$SELECTED" \
-    --hold \
-    -- fish --login
+    # --hold \
+    # -- fish --login
 
   # Window 2 — nvim in the same folder
   kitty @ launch \
     --type=window \
     --cwd="$SELECTED" \
-    -- nvim .
+    -- fish --login -c "nvim ."
 
   kitty @ goto-layout --match title:"$SESSION_NAME" stack
 }
